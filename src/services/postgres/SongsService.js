@@ -26,23 +26,39 @@ class SongsService {
     return result.rows[0].id;
   }
 
-  async getSongs() {
+  async getSongs({ title, performer }) {
+    if (title && performer) {
+      const query = {
+        text: 'SELECT id, title, performer FROM songs WHERE title ILIKE $1 AND performer ILIKE $2',
+        values: [`%${title}%`, `%${performer}%`],
+      };
+      const result = await this._pool.query(query);
+      return result.rows.map(mapSongDBtoModel);
+    }
+    if (title || performer) {
+      const query = {
+        text: 'SELECT id, title, performer FROM songs WHERE title ILIKE $1 OR performer ILIKE $2',
+        values: [`%${title}%`, `%${performer}%`],
+      };
+      const result = await this._pool.query(query);
+      return result.rows.map(mapSongDBtoModel);
+    }
     const result = await this._pool.query('SELECT id, title, performer FROM songs');
     return result.rows.map(mapSongDBtoModel);
   }
 
   async getSongById(id) {
     const query = {
-      text: 'SELECT * FROM songs WHERE id =$1',
+      text: 'SELECT id, title, year, genre, performer, duration FROM songs WHERE id =$1',
       values: [id],
     };
     const result = await this._pool.query(query);
 
-    if (!result.rows.length) {
+    if (!result.rowCount) {
       throw new NotFoundError('Lagu tidak ditemukan');
     }
 
-    return result.rows.map(mapSongDBtoModel)[0];
+    return mapSongDBtoModel(result.rows[0]);
   }
 
   async editSongById(id, { title, year, genre, performer, duration, albumId }) {
