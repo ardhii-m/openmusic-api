@@ -27,11 +27,6 @@ exports.up = (pgm) => {
     },
   });
 
-  pgm.addConstraint(
-    'user_album_likes',
-    'unique_user_album_likes',
-    'UNIQUE("userId", "albumId")',
-  );
 };
 
 /**
@@ -41,5 +36,4 @@ exports.up = (pgm) => {
  */
 exports.down = (pgm) => {
   pgm.dropTable('user_album_likes');
-  pgm.dropConstraint('user_album_likes', 'unique_user_album_likes');
 };
