@@ -3,6 +3,8 @@ require('dotenv').config();
 
 const Hapi = require('@hapi/hapi');
 const Jwt = require('@hapi/jwt');
+const path = require('path');
+const Inert = require('@hapi/inert');
 
 // Albums
 const albums = require('./api/albums');
@@ -35,6 +37,14 @@ const collaborations = require('./api/collaborations');
 const CollaborationsService = require('./services/postgres/CollaborationService');
 const CollaborationsValidator = require('./validator/collaborations');
 
+// Exports
+const _exports = require('./api/exports');
+const ProducerService = require('./services/rabbitmq/ProducerService');
+const ExportsValidator = require('./validator/exports');
+
+// Storage
+const StorageService = require('./services/storage/StorageService');
+
 const ClientError = require('./exceptions/ClientError');
 
 const init = async () => {
@@ -44,13 +54,15 @@ const init = async () => {
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
   const playlistsService = new PlaylistsService(collaborationsService);
+  const storageService = new StorageService(path.resolve(__dirname, 'api/albums/file/covers'));
+
 
   const server = Hapi.server({
     port: process.env.PORT,
     host: process.env.HOST,
-    // debug: {
-    //   request:['error'],
-    // },
+    debug: {
+      request:['error'],
+    },
     routes: {
       cors: {
         origin: ['*'],
@@ -61,6 +73,9 @@ const init = async () => {
   await server.register([
     {
       plugin: Jwt,
+    },
+    {
+      plugin: Inert,
     },
   ]);
 
@@ -85,6 +100,7 @@ const init = async () => {
       plugin: albums,
       options: {
         service: albumsService,
+        storageService: storageService,
         validator: AlbumsValidator,
       },
     },
@@ -125,6 +141,14 @@ const init = async () => {
         playlistsService,
         usersService,
         validator: CollaborationsValidator,
+      }
+    },
+    {
+      plugin: _exports,
+      options: {
+        service: ProducerService,
+        playlistsService: playlistsService,
+        validator: ExportsValidator,
       }
     }
   ]);
